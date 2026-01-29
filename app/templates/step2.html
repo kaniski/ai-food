@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>Preferências e hábitos</h1>
+    <p>Etapa 2 de 2 — agora sim a parte que deixa o cardápio com a sua cara.</p>
+  </div>
+
+  <div class="stepper">
+    <div class="step done"><span>1</span><label>Dados</label></div>
+    <div class="step active"><span>2</span><label>Alimentação</label></div>
+    <div class="step"><span>3</span><label>Resultado</label></div>
+  </div>
+
+  <div class="mini-card">
+    <div><strong>{{ step1.name }}</strong></div>
+    <div class="muted">{{ step1.age }} anos • {{ step1.height_cm }}cm • {{ step1.weight_kg }}kg</div>
+  </div>
+
+  <form class="form" method="post" novalidate>
+    <div class="grid-2">
+      <div class="field">
+        <label>Quais comidas você mais gosta?</label>
+        <textarea name="likes" rows="3" placeholder="Ex: frango, arroz, ovo, banana, feijão..."></textarea>
+        <div class="hint">Dica: separa por vírgula pra ficar organizado.</div>
+      </div>
+
+      <div class="field">
+        <label>Quais comidas você não come?</label>
+        <textarea name="dislikes" rows="3" placeholder="Ex: peixe, leite, brócolis..."></textarea>
+        <div class="hint">Se não tiver, deixa em branco.</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Alergias</label>
+        <input name="allergies" placeholder="Ex: amendoim, lactose..." />
+      </div>
+
+      <div class="field">
+        <label>Restrição alimentar</label>
+        <select name="restriction">
+          <option value="none">Nenhuma</option>
+          <option value="vegetarian">Vegetariano</option>
+          <option value="vegan">Vegano</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Quantas refeições por dia?</label>
+        <input name="meals_per_day" type="number" min="3" max="7" value="4" />
+        <div class="hint">Entre 3 e 7 (pra não virar bagunça).</div>
+      </div>
+
+      <div class="field">
+        <label>Aviso / alerta / recado</label>
+        <textarea name="notes" rows="3" placeholder="Ex: treino 19h, prefiro refeições rápidas, sem fritura..."></textarea>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-ghost" href="{{ url_for('main.step1') }}">Voltar</a>
+      <button class="btn btn-primary" type="submit">Criar cardápio</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

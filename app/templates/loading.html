@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel center">
+  <div class="loader-wrap">
+    <div class="loader"></div>
+  </div>
+
+  <h1>Montando seu cardápio…</h1>
+  <p class="muted">Simulando a IA calculando macros, refeições e porções 👀</p>
+
+  <div class="progress">
+    <div class="bar" id="progressBar"></div>
+  </div>
+
+  <div class="muted small">Isso demora ~3 segundos (só pra versão demo ficar bonitinha).</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+{% endblock %}

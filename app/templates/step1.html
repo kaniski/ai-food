@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>Vamos montar seu cardápio</h1>
+    <p>Etapa 1 de 2 — dados básicos pra calcular tudo direitinho.</p>
+  </div>
+
+  <div class="stepper">
+    <div class="step active"><span>1</span><label>Dados</label></div>
+    <div class="step"><span>2</span><label>Alimentação</label></div>
+    <div class="step"><span>3</span><label>Resultado</label></div>
+  </div>
+
+  <form class="form" method="post" novalidate>
+    <div class="grid-2">
+      <div class="field">
+        <label>Nome</label>
+        <input name="name" placeholder="Ex: Luiz" required />
+      </div>
+
+      <div class="field">
+        <label>Idade</label>
+        <input name="age" type="number" min="1" placeholder="Ex: 28" required />
+      </div>
+
+      <div class="field">
+        <label>Altura (cm)</label>
+        <input name="height_cm" type="number" step="0.1" min="1" placeholder="Ex: 178" required />
+      </div>
+
+      <div class="field">
+        <label>Peso (kg)</label>
+        <input name="weight_kg" type="number" step="0.1" min="1" placeholder="Ex: 82.5" required />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Objetivo</label>
+      <div class="segmented">
+        <label class="seg">
+          <input type="radio" name="goal" value="cut" required>
+          <span>Emagrecer</span>
+        </label>
+        <label class="seg">
+          <input type="radio" name="goal" value="maintain">
+          <span>Manter</span>
+        </label>
+        <label class="seg">
+          <input type="radio" name="goal" value="bulk">
+          <span>Ganhar massa</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Continuar</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

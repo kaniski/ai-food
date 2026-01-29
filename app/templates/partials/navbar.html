@@ -1,0 +1,15 @@
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-logo">M</div>
+      <div class="brand-text">
+        <strong>MenuAI</strong>
+        <span>cardápio inteligente (demo)</span>
+      </div>
+    </div>
+
+    <form action="{{ url_for('main.reset') }}" method="post">
+      <button class="btn btn-ghost" type="submit">Começar de novo</button>
+    </form>
+  </div>
+</header>

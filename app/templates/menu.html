@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>Seu cardápio do dia</h1>
+    <p>Baseado no seu objetivo: <strong>{{ plan.user.goal_label }}</strong></p>
+  </div>
+
+  <div class="grid-3">
+    <div class="glass-card">
+      <div class="card-title">Macros</div>
+      <div class="big">{{ plan.macros.calories }} kcal</div>
+      <div class="macro-row">
+        <span>Proteína</span><strong>{{ plan.macros.protein_g }}g</strong>
+      </div>
+      <div class="macro-row">
+        <span>Carbo</span><strong>{{ plan.macros.carbs_g }}g</strong>
+      </div>
+      <div class="macro-row">
+        <span>Gordura</span><strong>{{ plan.macros.fat_g }}g</strong>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="card-title">Informações úteis</div>
+      <div class="info-row">
+        <span>Água sugerida</span><strong>{{ plan.extras.water_ml }} ml</strong>
+      </div>
+      <div class="info-row">
+        <span>Passos (meta)</span><strong>{{ plan.extras.steps_hint }}</strong>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        {{ plan.extras.consistency_tip }}
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="card-title">Seu perfil</div>
+      <div class="muted">{{ plan.user.name }} • {{ plan.user.age }} anos</div>
+      <div class="muted">{{ plan.user.height_cm }}cm • {{ plan.user.weight_kg }}kg</div>
+      <div class="pill-row" style="margin-top:10px;">
+        {% if plan.user.restriction != "none" %}
+          <span class="pill">{{ plan.user.restriction }}</span>
+        {% else %}
+          <span class="pill">Sem restrição</span>
+        {% endif %}
+      </div>
+      {% if plan.user.notes %}
+        <div class="note">
+          <strong>Recado:</strong> {{ plan.user.notes }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <h2 class="section-title">Refeições</h2>
+
+  <div class="meal-grid">
+    {% for meal in plan.meals %}
+      <button
+        class="meal-card"
+        type="button"
+        data-label="{{ meal.label }}"
+        data-title="{{ meal.title }}"
+        data-prep="{{ meal.prep }}"
+        data-ingredients="{{ meal.ingredients | join(', ') }}"
+        data-tips="{{ meal.tips }}"
+      >
+        <div class="meal-top">
+          <span class="meal-label">{{ meal.label }}</span>
+          <span class="meal-badge">ver detalhes</span>
+        </div>
+        <div class="meal-title">{{ meal.title }}</div>
+        <div class="meal-sub muted">Clique pra abrir o modo preparo</div>
+      </button>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Modal -->
+<div class="modal" id="mealModal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="1"></div>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <div class="modal-label" id="mLabel"></div>
+        <div class="modal-title" id="mTitle"></div>
+      </div>
+      <button class="btn btn-ghost" id="closeModal" type="button">Fechar</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-section">
+        <h3>Ingredientes</h3>
+        <p class="muted" id="mIngredients"></p>
+      </div>
+
+      <div class="modal-section">
+        <h3>Modo de preparo</h3>
+        <p class="muted" id="mPrep"></p>
+      </div>
+
+      <div class="modal-section" id="tipsWrap" style="display:none;">
+        <h3>Dica</h3>
+        <p class="muted" id="mTips"></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/menu.js') }}"></script>
+{% endblock %}
