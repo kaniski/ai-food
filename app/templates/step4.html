@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="hero">
+    <div class="eyebrow">Segurança e preferências</div>
+    <h1>Vamos personalizar com cuidado.</h1>
+    <p class="sub">
+      Isso evita erros e deixa o plano mais fácil de seguir. Resultado vem quando o plano encaixa na vida real.
+    </p>
+  </div>
+
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+    <div class="q">
+      <div class="q-title">Alguma alergia?</div>
+      <div class="chips" style="margin-bottom:10px;">
+        {% set a = values.alergias_tags or [] %}
+        {% for tag in ['lactose','gluten','amendoim','frutos_do_mar','ovo'] %}
+          <label class="chip">
+            <input type="checkbox" name="alergias_tags" value="{{ tag }}" {% if tag in a %}checked{% endif %}>
+            <span>{{ tag.replace('_',' ') }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <textarea name="alergias_texto" placeholder="Descreva detalhes (se quiser)">{{ values.alergias_texto }}</textarea>
+    </div>
+
+    <div class="q" style="margin-top:12px;">
+      <div class="q-title">Algum alimento que você não coma?</div>
+      <textarea name="nao_come" placeholder="Ex: peixe, brócolis, leite...">{{ values.nao_come }}</textarea>
+    </div>
+
+    <div class="q" style="margin-top:12px;">
+      <div class="q-title">Alguma restrição alimentar?</div>
+      <div class="chips">
+        {% set r = values.restricoes_tags or [] %}
+        {% for tag in ['vegetariano','vegano','cetogenico','low_carb','sem_lactose','sem_gluten'] %}
+          <label class="chip">
+            <input type="checkbox" name="restricoes_tags" value="{{ tag }}" {% if tag in r %}checked{% endif %}>
+            <span>{{ tag.replace('_',' ') }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <div class="mini">Se marcar aqui, o plano respeita automaticamente.</div>
+    </div>
+
+    <div class="actions">
+      <a class="btn ghost" href="/step/3">Voltar</a>
+      <button class="btn primary" type="submit">Montar meu plano</button>
+    </div>
+  </form>
+{% endblock %}

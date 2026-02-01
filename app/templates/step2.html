@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="hero">
+    <div class="eyebrow">Ajuste fino</div>
+    <h1>Você não está sozinho — e não precisa sofrer.</h1>
+    <p class="sub">
+      Responda rápido. Isso ajuda a gente a montar um plano mais realista (e que você consiga seguir).
+    </p>
+  </div>
+
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+    <div class="qa">
+      <div class="q">
+        <div class="q-title">1) Você está feliz com seu corpo?</div>
+        <div class="toggle">
+          <label class="pill">
+            <input type="radio" name="feliz_corpo" value="sim" {% if values.feliz_corpo == 'sim' %}checked{% endif %}>
+            <span>Sim</span>
+          </label>
+          <label class="pill">
+            <input type="radio" name="feliz_corpo" value="nao" {% if values.feliz_corpo == 'nao' %}checked{% endif %}>
+            <span>Não</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-title">2) Você gostaria de mudar de forma rápida e sem sofrimento?</div>
+        <div class="toggle">
+          <label class="pill">
+            <input type="radio" name="mudar_rapido" value="sim" {% if values.mudar_rapido == 'sim' %}checked{% endif %}>
+            <span>Sim</span>
+          </label>
+          <label class="pill">
+            <input type="radio" name="mudar_rapido" value="nao" {% if values.mudar_rapido == 'nao' %}checked{% endif %}>
+            <span>Não</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-title">3) Está cansado de não gostar do que vê no espelho?</div>
+        <div class="toggle">
+          <label class="pill">
+            <input type="radio" name="cansado_espelho" value="sim" {% if values.cansado_espelho == 'sim' %}checked{% endif %}>
+            <span>Sim</span>
+          </label>
+          <label class="pill">
+            <input type="radio" name="cansado_espelho" value="nao" {% if values.cansado_espelho == 'nao' %}checked{% endif %}>
+            <span>Não</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a class="btn ghost" href="/">Voltar</a>
+      <button class="btn primary" type="submit">Continuar</button>
+    </div>
+
+    <div class="mini">Você está a poucos cliques de deixar isso pronto.</div>
+  </form>
+{% endblock %}

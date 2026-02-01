@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="hero">
+    <div class="eyebrow">Últimos detalhes</div>
+    <h1>O toque final pra ficar perfeito.</h1>
+    <p class="sub">Aqui você pode pedir ajustes do tipo “quero algo específico na janta” ou “tenho pouco tempo”.</p>
+  </div>
+
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+    <div class="q">
+      <div class="q-title">Algo a acrescentar?</div>
+      <textarea name="observacoes" placeholder="Ex: quero hamburger na janta, ou prefiro receitas rápidas...">{{ values.observacoes }}</textarea>
+      <div class="mini">Isso ajuda a deixar o plano com a sua cara.</div>
+    </div>
+
+    <div class="actions">
+      <a class="btn ghost" href="/step/4">Voltar</a>
+      <button class="btn primary" type="submit">Ver resumo</button>
+    </div>
+  </form>
+{% endblock %}

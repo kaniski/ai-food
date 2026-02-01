@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="hero">
+    <div class="eyebrow">Direção do plano</div>
+    <h1>Agora vamos calibrar o seu objetivo.</h1>
+    <p class="sub">Com isso, o plano fica mais coerente com sua rotina e resultados.</p>
+  </div>
+
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+    <div class="q">
+      <div class="q-title">Seu objetivo é:</div>
+      <div class="choices">
+        <label class="chip">
+          <input type="radio" name="objetivo" value="emagrecer" {% if values.objetivo == 'emagrecer' %}checked{% endif %}>
+          <span>Emagrecer</span>
+        </label>
+        <label class="chip">
+          <input type="radio" name="objetivo" value="engordar" {% if values.objetivo == 'engordar' %}checked{% endif %}>
+          <span>Engordar</span>
+        </label>
+        <label class="chip">
+          <input type="radio" name="objetivo" value="ganhar_massa" {% if values.objetivo == 'ganhar_massa' %}checked{% endif %}>
+          <span>Ganhar massa</span>
+        </label>
+      </div>
+      {% if errors.get('objetivo') %}<div class="err">{{ errors.get('objetivo') }}</div>{% endif %}
+    </div>
+
+    <div class="q" style="margin-top:12px;">
+      <div class="q-title">Quantas refeições você faz por dia?</div>
+      <select name="refeicoes_por_dia">
+        {% set r = values.refeicoes_por_dia %}
+        <option value="2" {% if r == 2 or r == '2' %}selected{% endif %}>2</option>
+        <option value="3" {% if r == 3 or r == '3' %}selected{% endif %}>3</option>
+        <option value="4" {% if r == 4 or r == '4' %}selected{% endif %}>4</option>
+        <option value="5" {% if r == 5 or r == '5' %}selected{% endif %}>5</option>
+        <option value="6" {% if r == 6 or r == '6' %}selected{% endif %}>6</option>
+      </select>
+      {% if errors.get('refeicoes_por_dia') %}<div class="err">{{ errors.get('refeicoes_por_dia') }}</div>{% endif %}
+    </div>
+
+    <div class="actions">
+      <a class="btn ghost" href="/step/2">Voltar</a>
+      <button class="btn primary" type="submit">Continuar</button>
+    </div>
+
+    <div class="mini">A gente vai usar isso para distribuir melhor suas refeições e energia do dia.</div>
+  </form>
+{% endblock %}

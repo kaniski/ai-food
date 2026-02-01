@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title }}</title>
+  <meta name="description" content="{{ meta_description }}" />
+  <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+  <script defer src="{{ url_for('static', path='/app.js') }}"></script>
+</head>
+<body>
+  <div class="bg">
+    <div class="grain"></div>
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <div class="logo">MN</div>
+        <div class="brand-text">
+          <div class="brand-title">MicroNutri</div>
+          <div class="brand-sub">Saúde simples, plano do seu jeito</div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div class="pillinfo" title="Tempo médio">
+          <span class="dot"></span>
+          <span>1 minuto</span>
+        </div>
+
+        <form method="post" action="/reset" class="reset">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="link-btn" type="submit" title="Reiniciar (demo)">Reiniciar</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <div class="progress">
+        {% set current = step|int %}
+        {% set total = 5 %}
+        {% if current <= 5 %}
+          <div class="progress-head">
+            <div class="progress-title">Etapa {{ current }}/{{ total }}</div>
+            <div class="progress-hint">rápido • direto • sem enrolação</div>
+          </div>
+          <div class="bar" aria-label="Progresso do formulário">
+            <div class="bar-fill" style="width: {{ ((current/total)*100) }}%"></div>
+          </div>
+        {% else %}
+          <div class="progress-head">
+            <div class="progress-title">Revisão final</div>
+            <div class="progress-hint">confira antes de confirmar</div>
+          </div>
+          <div class="bar" aria-label="Progresso do formulário">
+            <div class="bar-fill" style="width: 100%"></div>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if errors and errors.get('__all__') %}
+        <div class="alert">{{ errors.get('__all__') }}</div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </section>
+
+    <footer class="footer">
+      <div class="footer-note">
+        * Demo: seus dados ficam temporariamente no seu navegador (sessão). Sem banco, sem cobrança, sem envio para terceiros.
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

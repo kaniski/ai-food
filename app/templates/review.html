@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="hero">
+    <div class="eyebrow">Revisão</div>
+    <h1>Confira seus dados antes de confirmar.</h1>
+    <p class="sub">Se estiver tudo ok, confirmando agora a gente salva no banco (local) e você segue para a próxima fase.</p>
+  </div>
+
+  {% if saved %}
+    <div class="success">
+      ✅ Dados salvos no MongoDB (demo).
+      {% if saved_id %}<div class="mini">ID: {{ saved_id }}</div>{% endif %}
+    </div>
+  {% endif %}
+
+  <div class="summary">
+    <h2>Dados pessoais</h2>
+    <div class="summary-grid">
+      <div class="kv"><span>Email</span><b>{{ data.step1.email }}</b></div>
+      <div class="kv"><span>Nome</span><b>{{ data.step1.nome }}</b></div>
+      <div class="kv"><span>WhatsApp</span><b>{{ data.step1.numero }}</b></div>
+      <div class="kv"><span>Idade</span><b>{{ data.step1.idade }}</b></div>
+      <div class="kv"><span>Peso</span><b>{{ data.step1.peso }}</b></div>
+    </div>
+
+    <h2>Respostas (sim/não)</h2>
+    <div class="summary-grid">
+      <div class="kv"><span>Feliz com o corpo?</span><b>{{ data.step2.feliz_corpo }}</b></div>
+      <div class="kv"><span>Mudar rápido sem sofrimento?</span><b>{{ data.step2.mudar_rapido }}</b></div>
+      <div class="kv"><span>Cansado do espelho?</span><b>{{ data.step2.cansado_espelho }}</b></div>
+    </div>
+
+    <h2>Objetivo e rotina</h2>
+    <div class="summary-grid">
+      <div class="kv"><span>Objetivo</span><b>{{ data.step3.objetivo }}</b></div>
+      <div class="kv"><span>Refeições/dia</span><b>{{ data.step3.refeicoes_por_dia }}</b></div>
+    </div>
+
+    <h2>Alergias e restrições</h2>
+    <div class="summary-grid">
+      <div class="kv wide">
+        <span>Alergias (tags)</span>
+        <b>{{ (data.step4.alergias_tags or []) | join(', ') }}</b>
+      </div>
+      <div class="kv wide">
+        <span>Alergias (texto)</span>
+        <div class="note-box">{{ data.step4.alergias_texto or '-' }}</div>
+      </div>
+
+      <div class="kv wide">
+        <span>Não come</span>
+        <div class="note-box">{{ data.step4.nao_come or '-' }}</div>
+      </div>
+
+      <div class="kv wide">
+        <span>Restrições (tags)</span>
+        <b>{{ (data.step4.restricoes_tags or []) | join(', ') }}</b>
+      </div>
+    </div>
+
+    <h2>Observações finais</h2>
+    <div class="note-box">{{ data.step5.observacoes or '-' }}</div>
+  </div>
+
+  <div class="actions">
+    <a class="btn ghost" href="/">Voltar e editar</a>
+
+    <form method="post" action="/review/confirm" style="width:100%;">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn primary" type="submit">Confirmar</button>
+      <div class="mini">Ao confirmar, salvamos no MongoDB local (demo).</div>
+    </form>
+  </div>
+{% endblock %}
