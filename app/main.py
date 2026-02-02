@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import secrets
-from typing import Any, Dict
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form
@@ -16,9 +17,6 @@ from app.schemas import Step1In, Step2In, Step3In, Step4In, Step5In, UserCreate,
 from app.services.mongo import get_db
 from app.services.macros import compute_macros
 
-# --------------------------------------------------
-# Carrega variáveis de ambiente (.env)
-# --------------------------------------------------
 load_dotenv()
 
 app = FastAPI()
@@ -38,7 +36,6 @@ templates = Jinja2Templates(directory="app/templates")
 
 @app.on_event("startup")
 async def startup_event():
-    # Em produção você provavelmente vai mandar isso pra logger, não pra print.
     db = get_db()
     await db.command("ping")
     print("✅ MongoDB conectado com sucesso")
@@ -82,7 +79,6 @@ def as_bool(v: str) -> bool:
 
 # -------------------------
 # Guards de etapa
-# step1 -> step2 -> step3 -> macros -> step4 -> step5 -> review
 # -------------------------
 def can_access(request: Request, page: str) -> bool:
     s = request.session
@@ -101,6 +97,48 @@ def can_access(request: Request, page: str) -> bool:
     if page == "review":
         return "step1" in s and "step2" in s and "step3" in s and "macros" in s and "step4" in s and "step5" in s
     return False
+
+
+# -------------------------
+# Persistência incremental (LEADS)
+# -------------------------
+def _lead_key_from_session(request: Request) -> Optional[Dict[str, Any]]:
+    step1 = request.session.get("step1") or {}
+    email = step1.get("email")
+    if not email:
+        return None
+    return {"email": email}
+
+
+async def upsert_lead_progress(request: Request, step_name: str, payload: Dict[str, Any]) -> None:
+    """
+    Salva o progresso a cada etapa.
+    Isso alimenta seu funil/CRM (email marketing etc).
+    """
+    key = _lead_key_from_session(request)
+    if not key:
+        return
+
+    db = get_db()
+    leads = db.get_collection("leads")
+    now = datetime.utcnow()
+
+    update_doc: Dict[str, Any] = {
+        "$set": {
+            f"steps.{step_name}": payload,
+            "last_step": step_name,
+            "updated_at": now,
+        },
+        "$setOnInsert": {
+            "email": key["email"],
+            "created_at": now,
+            "first_seen_at": now,
+            "source": "micronutri-web",
+        },
+        "$addToSet": {"completed_steps": step_name},
+    }
+
+    await leads.update_one(key, update_doc, upsert=True)
 
 
 # --------------------------------------------------
@@ -141,9 +179,13 @@ async def step1_post(
         return templates.TemplateResponse("step1.html", ctx)
 
     request.session["step1"] = payload.model_dump()
+
     # se editar step1, invalida downstream
     for k in ["step2", "step3", "macros", "step4", "step5"]:
         request.session.pop(k, None)
+
+    # salva no lead imediatamente
+    await upsert_lead_progress(request, "step1", request.session["step1"])
 
     return redirect("/step/2")
 
@@ -191,6 +233,7 @@ async def step2_post(
     for k in ["step3", "macros", "step4", "step5"]:
         request.session.pop(k, None)
 
+    await upsert_lead_progress(request, "step2", request.session["step2"])
     return redirect("/step/3")
 
 
@@ -251,11 +294,12 @@ async def step3_post(
     for k in ["macros", "step4", "step5"]:
         request.session.pop(k, None)
 
+    await upsert_lead_progress(request, "step3", request.session["step3"])
     return redirect("/macros")
 
 
 # --------------------------------------------------
-# MACROS (Etapa 4/6)
+# MACROS
 # --------------------------------------------------
 @app.get("/macros", response_class=HTMLResponse)
 async def macros(request: Request):
@@ -298,7 +342,6 @@ async def macros(request: Request):
 
     ctx["macros"] = macros_payload
     ctx["refeicoes"] = step3.get("refeicoes_por_dia")
-
     return templates.TemplateResponse("macros.html", ctx)
 
 
@@ -306,11 +349,9 @@ async def macros(request: Request):
 async def macros_confirm(request: Request, csrf: str = Form(...)):
     if not can_access(request, "macros"):
         return redirect("/step/3")
-
     if not csrf_check(request, csrf):
         return redirect("/macros")
 
-    # recalcula e salva na sessão (evita adulteração)
     step1 = request.session.get("step1", {})
     step3 = request.session.get("step3", {})
 
@@ -343,11 +384,12 @@ async def macros_confirm(request: Request, csrf: str = Form(...)):
         fat_per_meal_g=result.fat_per_meal_g,
     ).model_dump()
 
+    await upsert_lead_progress(request, "macros", request.session["macros"])
     return redirect("/step/4")
 
 
 # --------------------------------------------------
-# STEP 4 (etapa 5/6)
+# STEP 4
 # --------------------------------------------------
 @app.get("/step/4", response_class=HTMLResponse)
 async def step4(request: Request):
@@ -369,6 +411,7 @@ async def step4_post(
 ):
     if not can_access(request, "step4"):
         return redirect("/macros")
+
     ctx = base_context(request, step=5)
     ctx["values"] = {
         "alergias_texto": alergias_texto,
@@ -395,11 +438,12 @@ async def step4_post(
     request.session["step4"] = payload.model_dump()
     request.session.pop("step5", None)
 
+    await upsert_lead_progress(request, "step4", request.session["step4"])
     return redirect("/step/5")
 
 
 # --------------------------------------------------
-# STEP 5 (etapa 6/6)
+# STEP 5
 # --------------------------------------------------
 @app.get("/step/5", response_class=HTMLResponse)
 async def step5(request: Request):
@@ -418,6 +462,7 @@ async def step5_post(
 ):
     if not can_access(request, "step5"):
         return redirect("/step/4")
+
     ctx = base_context(request, step=6)
     ctx["values"] = {"observacoes": observacoes}
 
@@ -432,6 +477,7 @@ async def step5_post(
         return templates.TemplateResponse("step5.html", ctx)
 
     request.session["step5"] = payload.model_dump()
+    await upsert_lead_progress(request, "step5", request.session["step5"])
     return redirect("/review")
 
 
@@ -469,11 +515,9 @@ async def review(request: Request):
 async def confirm(request: Request, csrf: str = Form(...)):
     if not can_access(request, "review"):
         return redirect("/")
-
     if not csrf_check(request, csrf):
         return redirect("/review")
 
-    # Persiste silenciosamente (sem expor detalhes pro usuário)
     doc = UserCreate(
         **request.session.get("step1", {}),
         **request.session.get("step2", {}),
@@ -486,8 +530,11 @@ async def confirm(request: Request, csrf: str = Form(...)):
     db = get_db()
     await db.get_collection("users").insert_one(doc.model_dump())
 
-    # Próxima etapa do produto (futuro): geração do cardápio
-    # Por enquanto, só reinicia para manter o fluxo “fechado” sem mencionar infra.
+    try:
+        await upsert_lead_progress(request, "completed", {"at": datetime.utcnow().isoformat()})
+    except Exception:
+        pass
+
     request.session.clear()
     return redirect("/")
 
