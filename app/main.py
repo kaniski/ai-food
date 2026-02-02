@@ -12,51 +12,41 @@ from pydantic import ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import SECRET_KEY, SESSION_COOKIE, SESSION_MAX_AGE_SECONDS
-from app.schemas import Step1In, Step2In, Step3In, Step4In, Step5In, UserCreate
+from app.schemas import Step1In, Step2In, Step3In, Step4In, Step5In, UserCreate, MacrosIn
 from app.services.mongo import get_db
+from app.services.macros import compute_macros
 
 # --------------------------------------------------
 # Carrega variáveis de ambiente (.env)
 # --------------------------------------------------
 load_dotenv()
 
-# --------------------------------------------------
-# App FastAPI
-# --------------------------------------------------
 app = FastAPI()
 
-# --------------------------------------------------
-# Middlewares
-# --------------------------------------------------
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
     session_cookie=SESSION_COOKIE,
     max_age=SESSION_MAX_AGE_SECONDS,
     same_site="lax",
-    https_only=False,  # em produção vira True
+    https_only=False,
 )
 
-# --------------------------------------------------
-# Static e Templates
-# --------------------------------------------------
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 
-# --------------------------------------------------
-# Startup: testa conexão com MongoDB
-# --------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
+    # Em produção você provavelmente vai mandar isso pra logger, não pra print.
     db = get_db()
     await db.command("ping")
     print("✅ MongoDB conectado com sucesso")
 
 
-# --------------------------------------------------
-# Sessão / CSRF / Guardas de etapa
-# --------------------------------------------------
+# -------------------------
+# Helpers sessão/CSRF
+# -------------------------
 def ensure_csrf(request: Request) -> str:
     token = request.session.get("csrf")
     if not token:
@@ -70,19 +60,8 @@ def csrf_check(request: Request, csrf: str | None) -> bool:
     return bool(expected and csrf and secrets.compare_digest(expected, csrf))
 
 
-def require_step(request: Request, step_needed: int) -> bool:
-    # step_needed: 1..5
-    if step_needed <= 1:
-        return True
-    if step_needed >= 2 and "step1" not in request.session:
-        return False
-    if step_needed >= 3 and "step2" not in request.session:
-        return False
-    if step_needed >= 4 and "step3" not in request.session:
-        return False
-    if step_needed >= 5 and "step4" not in request.session:
-        return False
-    return True
+def redirect(url: str) -> RedirectResponse:
+    return RedirectResponse(url, status_code=303)
 
 
 def base_context(request: Request, step: int) -> Dict[str, Any]:
@@ -94,17 +73,34 @@ def base_context(request: Request, step: int) -> Dict[str, Any]:
         "errors": {},
         "values": {},
         "csrf_token": ensure_csrf(request),
-        "saved": request.session.get("saved_demo", False),
-        "saved_id": request.session.get("saved_id"),
     }
-
-
-def redirect(url: str) -> RedirectResponse:
-    return RedirectResponse(url, status_code=303)
 
 
 def as_bool(v: str) -> bool:
     return v.strip().lower() in ["1", "true", "sim", "yes", "y", "on"]
+
+
+# -------------------------
+# Guards de etapa
+# step1 -> step2 -> step3 -> macros -> step4 -> step5 -> review
+# -------------------------
+def can_access(request: Request, page: str) -> bool:
+    s = request.session
+    if page == "step1":
+        return True
+    if page == "step2":
+        return "step1" in s
+    if page == "step3":
+        return "step1" in s and "step2" in s
+    if page == "macros":
+        return "step1" in s and "step2" in s and "step3" in s
+    if page == "step4":
+        return "step1" in s and "step2" in s and "step3" in s and "macros" in s
+    if page == "step5":
+        return "step1" in s and "step2" in s and "step3" in s and "macros" in s and "step4" in s
+    if page == "review":
+        return "step1" in s and "step2" in s and "step3" in s and "macros" in s and "step4" in s and "step5" in s
+    return False
 
 
 # --------------------------------------------------
@@ -128,13 +124,7 @@ async def step1_post(
     peso: float = Form(...),
 ):
     ctx = base_context(request, step=1)
-    ctx["values"] = {
-        "email": email,
-        "nome": nome,
-        "numero": numero,
-        "idade": idade,
-        "peso": peso,
-    }
+    ctx["values"] = {"email": email, "nome": nome, "numero": numero, "idade": idade, "peso": peso}
 
     if not csrf_check(request, csrf):
         ctx["errors"]["__all__"] = "Sessão expirada. Recarregue a página e tente de novo."
@@ -151,9 +141,10 @@ async def step1_post(
         return templates.TemplateResponse("step1.html", ctx)
 
     request.session["step1"] = payload.model_dump()
-    # Limpando qualquer “salvo” anterior, caso a pessoa edite e confirme de novo
-    request.session.pop("saved_demo", None)
-    request.session.pop("saved_id", None)
+    # se editar step1, invalida downstream
+    for k in ["step2", "step3", "macros", "step4", "step5"]:
+        request.session.pop(k, None)
+
     return redirect("/step/2")
 
 
@@ -162,7 +153,7 @@ async def step1_post(
 # --------------------------------------------------
 @app.get("/step/2", response_class=HTMLResponse)
 async def step2(request: Request):
-    if not require_step(request, 2):
+    if not can_access(request, "step2"):
         return redirect("/")
     ctx = base_context(request, step=2)
     ctx["values"] = request.session.get("step2", {})
@@ -177,17 +168,13 @@ async def step2_post(
     mudar_rapido: str = Form(...),
     cansado_espelho: str = Form(...),
 ):
-    if not require_step(request, 2):
+    if not can_access(request, "step2"):
         return redirect("/")
     ctx = base_context(request, step=2)
-    ctx["values"] = {
-        "feliz_corpo": feliz_corpo,
-        "mudar_rapido": mudar_rapido,
-        "cansado_espelho": cansado_espelho,
-    }
+    ctx["values"] = {"feliz_corpo": feliz_corpo, "mudar_rapido": mudar_rapido, "cansado_espelho": cansado_espelho}
 
     if not csrf_check(request, csrf):
-        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue a página e tente de novo."
+        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue e tente de novo."
         return templates.TemplateResponse("step2.html", ctx)
 
     try:
@@ -196,11 +183,14 @@ async def step2_post(
             mudar_rapido=as_bool(mudar_rapido),
             cansado_espelho=as_bool(cansado_espelho),
         )
-    except ValidationError as e:
+    except ValidationError:
         ctx["errors"]["__all__"] = "Responda todas as perguntas para continuar."
         return templates.TemplateResponse("step2.html", ctx)
 
     request.session["step2"] = payload.model_dump()
+    for k in ["step3", "macros", "step4", "step5"]:
+        request.session.pop(k, None)
+
     return redirect("/step/3")
 
 
@@ -209,8 +199,8 @@ async def step2_post(
 # --------------------------------------------------
 @app.get("/step/3", response_class=HTMLResponse)
 async def step3(request: Request):
-    if not require_step(request, 3):
-        return redirect("/" if "step1" not in request.session else "/step/2")
+    if not can_access(request, "step3"):
+        return redirect("/step/2" if "step1" in request.session else "/")
     ctx = base_context(request, step=3)
     ctx["values"] = request.session.get("step3", {})
     return templates.TemplateResponse("step3.html", ctx)
@@ -222,18 +212,33 @@ async def step3_post(
     csrf: str = Form(...),
     objetivo: str = Form(...),
     refeicoes_por_dia: int = Form(...),
+    sexo: str = Form(...),
+    altura_cm: int = Form(...),
+    atividade: str = Form(...),
 ):
-    if not require_step(request, 3):
-        return redirect("/" if "step1" not in request.session else "/step/2")
+    if not can_access(request, "step3"):
+        return redirect("/step/2")
     ctx = base_context(request, step=3)
-    ctx["values"] = {"objetivo": objetivo, "refeicoes_por_dia": refeicoes_por_dia}
+    ctx["values"] = {
+        "objetivo": objetivo,
+        "refeicoes_por_dia": refeicoes_por_dia,
+        "sexo": sexo,
+        "altura_cm": altura_cm,
+        "atividade": atividade,
+    }
 
     if not csrf_check(request, csrf):
-        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue a página e tente de novo."
+        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue e tente de novo."
         return templates.TemplateResponse("step3.html", ctx)
 
     try:
-        payload = Step3In(objetivo=objetivo, refeicoes_por_dia=refeicoes_por_dia)
+        payload = Step3In(
+            objetivo=objetivo,
+            refeicoes_por_dia=refeicoes_por_dia,
+            sexo=sexo,
+            altura_cm=altura_cm,
+            atividade=atividade,
+        )
     except ValidationError as e:
         errors = {}
         for err in e.errors():
@@ -243,17 +248,112 @@ async def step3_post(
         return templates.TemplateResponse("step3.html", ctx)
 
     request.session["step3"] = payload.model_dump()
+    for k in ["macros", "step4", "step5"]:
+        request.session.pop(k, None)
+
+    return redirect("/macros")
+
+
+# --------------------------------------------------
+# MACROS (Etapa 4/6)
+# --------------------------------------------------
+@app.get("/macros", response_class=HTMLResponse)
+async def macros(request: Request):
+    if not can_access(request, "macros"):
+        return redirect("/step/3" if "step2" in request.session else "/")
+
+    ctx = base_context(request, step=4)
+
+    step1 = request.session.get("step1", {})
+    step3 = request.session.get("step3", {})
+
+    result = compute_macros(
+        peso_kg=float(step1["peso"]),
+        altura_cm=int(step3["altura_cm"]),
+        idade=int(step1["idade"]),
+        sexo=str(step3["sexo"]),
+        atividade=str(step3["atividade"]),
+        objetivo=str(step3["objetivo"]),
+        refeicoes_por_dia=int(step3["refeicoes_por_dia"]),
+    )
+
+    macros_payload = MacrosIn(
+        bmr=result.bmr,
+        tdee=result.tdee,
+        cal_target=result.cal_target,
+        protein_g=result.protein_g,
+        carbs_g=result.carbs_g,
+        fat_g=result.fat_g,
+        protein_kcal=result.protein_kcal,
+        carbs_kcal=result.carbs_kcal,
+        fat_kcal=result.fat_kcal,
+        protein_pct=result.protein_pct,
+        carbs_pct=result.carbs_pct,
+        fat_pct=result.fat_pct,
+        kcal_per_meal=result.kcal_per_meal,
+        protein_per_meal_g=result.protein_per_meal_g,
+        carbs_per_meal_g=result.carbs_per_meal_g,
+        fat_per_meal_g=result.fat_per_meal_g,
+    ).model_dump()
+
+    ctx["macros"] = macros_payload
+    ctx["refeicoes"] = step3.get("refeicoes_por_dia")
+
+    return templates.TemplateResponse("macros.html", ctx)
+
+
+@app.post("/macros/confirm")
+async def macros_confirm(request: Request, csrf: str = Form(...)):
+    if not can_access(request, "macros"):
+        return redirect("/step/3")
+
+    if not csrf_check(request, csrf):
+        return redirect("/macros")
+
+    # recalcula e salva na sessão (evita adulteração)
+    step1 = request.session.get("step1", {})
+    step3 = request.session.get("step3", {})
+
+    result = compute_macros(
+        peso_kg=float(step1["peso"]),
+        altura_cm=int(step3["altura_cm"]),
+        idade=int(step1["idade"]),
+        sexo=str(step3["sexo"]),
+        atividade=str(step3["atividade"]),
+        objetivo=str(step3["objetivo"]),
+        refeicoes_por_dia=int(step3["refeicoes_por_dia"]),
+    )
+
+    request.session["macros"] = MacrosIn(
+        bmr=result.bmr,
+        tdee=result.tdee,
+        cal_target=result.cal_target,
+        protein_g=result.protein_g,
+        carbs_g=result.carbs_g,
+        fat_g=result.fat_g,
+        protein_kcal=result.protein_kcal,
+        carbs_kcal=result.carbs_kcal,
+        fat_kcal=result.fat_kcal,
+        protein_pct=result.protein_pct,
+        carbs_pct=result.carbs_pct,
+        fat_pct=result.fat_pct,
+        kcal_per_meal=result.kcal_per_meal,
+        protein_per_meal_g=result.protein_per_meal_g,
+        carbs_per_meal_g=result.carbs_per_meal_g,
+        fat_per_meal_g=result.fat_per_meal_g,
+    ).model_dump()
+
     return redirect("/step/4")
 
 
 # --------------------------------------------------
-# STEP 4
+# STEP 4 (etapa 5/6)
 # --------------------------------------------------
 @app.get("/step/4", response_class=HTMLResponse)
 async def step4(request: Request):
-    if not require_step(request, 4):
-        return redirect("/step/3")
-    ctx = base_context(request, step=4)
+    if not can_access(request, "step4"):
+        return redirect("/macros" if "step3" in request.session else "/")
+    ctx = base_context(request, step=5)
     ctx["values"] = request.session.get("step4", {})
     return templates.TemplateResponse("step4.html", ctx)
 
@@ -267,9 +367,9 @@ async def step4_post(
     alergias_tags: list[str] = Form([]),
     restricoes_tags: list[str] = Form([]),
 ):
-    if not require_step(request, 4):
-        return redirect("/step/3")
-    ctx = base_context(request, step=4)
+    if not can_access(request, "step4"):
+        return redirect("/macros")
+    ctx = base_context(request, step=5)
     ctx["values"] = {
         "alergias_texto": alergias_texto,
         "nao_come": nao_come,
@@ -278,7 +378,7 @@ async def step4_post(
     }
 
     if not csrf_check(request, csrf):
-        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue a página e tente de novo."
+        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue e tente de novo."
         return templates.TemplateResponse("step4.html", ctx)
 
     try:
@@ -293,17 +393,19 @@ async def step4_post(
         return templates.TemplateResponse("step4.html", ctx)
 
     request.session["step4"] = payload.model_dump()
+    request.session.pop("step5", None)
+
     return redirect("/step/5")
 
 
 # --------------------------------------------------
-# STEP 5
+# STEP 5 (etapa 6/6)
 # --------------------------------------------------
 @app.get("/step/5", response_class=HTMLResponse)
 async def step5(request: Request):
-    if not require_step(request, 5):
+    if not can_access(request, "step5"):
         return redirect("/step/4")
-    ctx = base_context(request, step=5)
+    ctx = base_context(request, step=6)
     ctx["values"] = request.session.get("step5", {})
     return templates.TemplateResponse("step5.html", ctx)
 
@@ -314,13 +416,13 @@ async def step5_post(
     csrf: str = Form(...),
     observacoes: str = Form(""),
 ):
-    if not require_step(request, 5):
+    if not can_access(request, "step5"):
         return redirect("/step/4")
-    ctx = base_context(request, step=5)
+    ctx = base_context(request, step=6)
     ctx["values"] = {"observacoes": observacoes}
 
     if not csrf_check(request, csrf):
-        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue a página e tente de novo."
+        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue e tente de novo."
         return templates.TemplateResponse("step5.html", ctx)
 
     try:
@@ -334,28 +436,29 @@ async def step5_post(
 
 
 # --------------------------------------------------
-# REVIEW + CONFIRM (Mongo insert)
+# REVIEW + CONFIRM
 # --------------------------------------------------
 @app.get("/review", response_class=HTMLResponse)
 async def review(request: Request):
-    if "step5" not in request.session:
-        # evita review sem completar o fluxo
+    if not can_access(request, "review"):
         if "step4" in request.session:
             return redirect("/step/5")
-        if "step3" in request.session:
+        if "macros" in request.session:
             return redirect("/step/4")
+        if "step3" in request.session:
+            return redirect("/macros")
         if "step2" in request.session:
             return redirect("/step/3")
         if "step1" in request.session:
             return redirect("/step/2")
         return redirect("/")
 
-    ctx = base_context(request, step=6)
-
+    ctx = base_context(request, step=7)
     ctx["data"] = {
         "step1": request.session.get("step1", {}),
         "step2": request.session.get("step2", {}),
         "step3": request.session.get("step3", {}),
+        "macros": request.session.get("macros", {}),
         "step4": request.session.get("step4", {}),
         "step5": request.session.get("step5", {}),
     }
@@ -364,49 +467,29 @@ async def review(request: Request):
 
 @app.post("/review/confirm", response_class=HTMLResponse)
 async def confirm(request: Request, csrf: str = Form(...)):
-    if "step5" not in request.session:
+    if not can_access(request, "review"):
         return redirect("/")
 
-    ctx = base_context(request, step=6)
-
     if not csrf_check(request, csrf):
-        ctx["errors"]["__all__"] = "Sessão expirada. Recarregue a página e tente de novo."
-        ctx["data"] = {
-            "step1": request.session.get("step1", {}),
-            "step2": request.session.get("step2", {}),
-            "step3": request.session.get("step3", {}),
-            "step4": request.session.get("step4", {}),
-            "step5": request.session.get("step5", {}),
-        }
-        return templates.TemplateResponse("review.html", ctx)
+        return redirect("/review")
 
-    # Monta documento final (UserCreate) e persiste em users
-    try:
-        doc = UserCreate(
-            **request.session.get("step1", {}),
-            **request.session.get("step2", {}),
-            **request.session.get("step3", {}),
-            **request.session.get("step4", {}),
-            **request.session.get("step5", {}),
-        )
-    except ValidationError:
-        ctx["errors"]["__all__"] = "Algum dado ficou inconsistente. Volte e revise as etapas."
-        ctx["data"] = {
-            "step1": request.session.get("step1", {}),
-            "step2": request.session.get("step2", {}),
-            "step3": request.session.get("step3", {}),
-            "step4": request.session.get("step4", {}),
-            "step5": request.session.get("step5", {}),
-        }
-        return templates.TemplateResponse("review.html", ctx)
+    # Persiste silenciosamente (sem expor detalhes pro usuário)
+    doc = UserCreate(
+        **request.session.get("step1", {}),
+        **request.session.get("step2", {}),
+        **request.session.get("step3", {}),
+        **request.session.get("macros", {}),
+        **request.session.get("step4", {}),
+        **request.session.get("step5", {}),
+    )
 
     db = get_db()
-    res = await db.get_collection("users").insert_one(doc.model_dump())
+    await db.get_collection("users").insert_one(doc.model_dump())
 
-    request.session["saved_demo"] = True
-    request.session["saved_id"] = str(res.inserted_id)
-
-    return redirect("/review")
+    # Próxima etapa do produto (futuro): geração do cardápio
+    # Por enquanto, só reinicia para manter o fluxo “fechado” sem mencionar infra.
+    request.session.clear()
+    return redirect("/")
 
 
 # --------------------------------------------------
@@ -414,7 +497,6 @@ async def confirm(request: Request, csrf: str = Form(...)):
 # --------------------------------------------------
 @app.post("/reset")
 async def reset(request: Request, csrf: str = Form(...)):
-    # mesmo o reset, validamos csrf para evitar post “solto”
     if not csrf_check(request, csrf):
         return redirect("/")
     request.session.clear()

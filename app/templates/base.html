@@ -28,12 +28,12 @@
       <div class="top-actions">
         <div class="pillinfo" title="Tempo médio">
           <span class="dot"></span>
-          <span>1 minuto</span>
+          <span>~1 minuto</span>
         </div>
 
         <form method="post" action="/reset" class="reset">
           <input type="hidden" name="csrf" value="{{ csrf_token }}">
-          <button class="link-btn" type="submit" title="Reiniciar (demo)">Reiniciar</button>
+          <button class="link-btn" type="submit" title="Reiniciar preenchimento">Reiniciar</button>
         </form>
       </div>
     </div>
@@ -43,8 +43,8 @@
     <section class="card">
       <div class="progress">
         {% set current = step|int %}
-        {% set total = 5 %}
-        {% if current <= 5 %}
+        {% set total = 6 %}
+        {% if current <= total %}
           <div class="progress-head">
             <div class="progress-title">Etapa {{ current }}/{{ total }}</div>
             <div class="progress-hint">rápido • direto • sem enrolação</div>
@@ -55,7 +55,7 @@
         {% else %}
           <div class="progress-head">
             <div class="progress-title">Revisão final</div>
-            <div class="progress-hint">confira antes de confirmar</div>
+            <div class="progress-hint">confira antes de continuar</div>
           </div>
           <div class="bar" aria-label="Progresso do formulário">
             <div class="bar-fill" style="width: 100%"></div>
@@ -72,7 +72,7 @@
 
     <footer class="footer">
       <div class="footer-note">
-        * Demo: seus dados ficam temporariamente no seu navegador (sessão). Sem banco, sem cobrança, sem envio para terceiros.
+        Seus dados são usados apenas para montar seu plano. Você pode reiniciar quando quiser.
       </div>
     </footer>
   </main>

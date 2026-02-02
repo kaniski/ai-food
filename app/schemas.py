@@ -55,11 +55,23 @@ class Step2In(BaseModel):
 
 
 # --------------------------------------------------
-# STEP 3 — Objetivo e rotina
+# STEP 3 — Objetivo, rotina e dados mínimos para macros
 # --------------------------------------------------
 class Step3In(BaseModel):
-    objetivo: str  # emagrecer | engordar | ganhar_massa
+    objetivo: str  # emagrecer | manter | engordar | ganhar_massa
     refeicoes_por_dia: int
+
+    sexo: str  # masculino | feminino
+    altura_cm: int
+    atividade: str  # sedentario | leve | moderado | alto | muito_alto
+
+    @field_validator("objetivo")
+    @classmethod
+    def validar_objetivo(cls, v: str) -> str:
+        allowed = {"emagrecer", "manter", "engordar", "ganhar_massa"}
+        if v not in allowed:
+            raise ValueError("Selecione um objetivo válido")
+        return v
 
     @field_validator("refeicoes_por_dia")
     @classmethod
@@ -67,6 +79,54 @@ class Step3In(BaseModel):
         if v not in [2, 3, 4, 5, 6]:
             raise ValueError("Quantidade inválida")
         return v
+
+    @field_validator("sexo")
+    @classmethod
+    def validar_sexo(cls, v: str) -> str:
+        if v not in ["masculino", "feminino"]:
+            raise ValueError("Selecione uma opção válida")
+        return v
+
+    @field_validator("altura_cm")
+    @classmethod
+    def validar_altura(cls, v: int) -> int:
+        if v < 120 or v > 230:
+            raise ValueError("Altura inválida")
+        return v
+
+    @field_validator("atividade")
+    @classmethod
+    def validar_atividade(cls, v: str) -> str:
+        allowed = {"sedentario", "leve", "moderado", "alto", "muito_alto"}
+        if v not in allowed:
+            raise ValueError("Selecione um nível válido")
+        return v
+
+
+# --------------------------------------------------
+# Macros calculadas (pré-IA)
+# --------------------------------------------------
+class MacrosIn(BaseModel):
+    bmr: int
+    tdee: int
+    cal_target: int
+
+    protein_g: int
+    carbs_g: int
+    fat_g: int
+
+    protein_kcal: int
+    carbs_kcal: int
+    fat_kcal: int
+
+    protein_pct: int
+    carbs_pct: int
+    fat_pct: int
+
+    kcal_per_meal: int
+    protein_per_meal_g: int
+    carbs_per_meal_g: int
+    fat_per_meal_g: int
 
 
 # --------------------------------------------------
@@ -90,24 +150,54 @@ class Step5In(BaseModel):
 # USER — Documento final para MongoDB
 # --------------------------------------------------
 class UserCreate(BaseModel):
+    # Step 1
     email: EmailStr
     nome: str
     numero: str
     idade: int
     peso: float
 
+    # Step 2
     feliz_corpo: bool
     mudar_rapido: bool
     cansado_espelho: bool
 
+    # Step 3
     objetivo: str
     refeicoes_por_dia: int
+    sexo: str
+    altura_cm: int
+    atividade: str
 
+    # Macros
+    bmr: int
+    tdee: int
+    cal_target: int
+
+    protein_g: int
+    carbs_g: int
+    fat_g: int
+
+    protein_kcal: int
+    carbs_kcal: int
+    fat_kcal: int
+
+    protein_pct: int
+    carbs_pct: int
+    fat_pct: int
+
+    kcal_per_meal: int
+    protein_per_meal_g: int
+    carbs_per_meal_g: int
+    fat_per_meal_g: int
+
+    # Step 4
     alergias_texto: Optional[str] = None
     alergias_tags: List[str] = []
     nao_come: Optional[str] = None
     restricoes_tags: List[str] = []
 
+    # Step 5
     observacoes: Optional[str] = None
 
     created_at: datetime = Field(default_factory=datetime.utcnow)

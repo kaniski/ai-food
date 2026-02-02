@@ -2,16 +2,11 @@
 {% block content %}
   <div class="hero">
     <div class="eyebrow">Revisão</div>
-    <h1>Confira seus dados antes de confirmar.</h1>
-    <p class="sub">Se estiver tudo ok, confirmando agora a gente salva no banco (local) e você segue para a próxima fase.</p>
+    <h1>Perfeito. Agora é só confirmar.</h1>
+    <p class="sub">
+      Confira rapidamente. Quando você confirmar, a gente segue para montar o seu plano.
+    </p>
   </div>
-
-  {% if saved %}
-    <div class="success">
-      ✅ Dados salvos no MongoDB (demo).
-      {% if saved_id %}<div class="mini">ID: {{ saved_id }}</div>{% endif %}
-    </div>
-  {% endif %}
 
   <div class="summary">
     <h2>Dados pessoais</h2>
@@ -23,27 +18,38 @@
       <div class="kv"><span>Peso</span><b>{{ data.step1.peso }}</b></div>
     </div>
 
-    <h2>Respostas (sim/não)</h2>
-    <div class="summary-grid">
-      <div class="kv"><span>Feliz com o corpo?</span><b>{{ data.step2.feliz_corpo }}</b></div>
-      <div class="kv"><span>Mudar rápido sem sofrimento?</span><b>{{ data.step2.mudar_rapido }}</b></div>
-      <div class="kv"><span>Cansado do espelho?</span><b>{{ data.step2.cansado_espelho }}</b></div>
-    </div>
-
     <h2>Objetivo e rotina</h2>
     <div class="summary-grid">
       <div class="kv"><span>Objetivo</span><b>{{ data.step3.objetivo }}</b></div>
       <div class="kv"><span>Refeições/dia</span><b>{{ data.step3.refeicoes_por_dia }}</b></div>
+      <div class="kv"><span>Sexo</span><b>{{ data.step3.sexo }}</b></div>
+      <div class="kv"><span>Altura</span><b>{{ data.step3.altura_cm }} cm</b></div>
+      <div class="kv"><span>Atividade</span><b>{{ data.step3.atividade }}</b></div>
+    </div>
+
+    <h2>Metas calculadas</h2>
+    <div class="summary-grid">
+      <div class="kv"><span>Calorias/dia</span><b>{{ data.macros.cal_target }} kcal</b></div>
+      <div class="kv"><span>Kcal/refeição</span><b>{{ data.macros.kcal_per_meal }} kcal</b></div>
+
+      <div class="kv"><span>Proteína</span><b>{{ data.macros.protein_g }}g ({{ data.macros.protein_pct }}%)</b></div>
+      <div class="kv"><span>Carbo</span><b>{{ data.macros.carbs_g }}g ({{ data.macros.carbs_pct }}%)</b></div>
+      <div class="kv"><span>Gordura</span><b>{{ data.macros.fat_g }}g ({{ data.macros.fat_pct }}%)</b></div>
+
+      <div class="kv">
+        <span>Por refeição</span>
+        <b>{{ data.macros.protein_per_meal_g }}P / {{ data.macros.carbs_per_meal_g }}C / {{ data.macros.fat_per_meal_g }}G</b>
+      </div>
     </div>
 
     <h2>Alergias e restrições</h2>
     <div class="summary-grid">
       <div class="kv wide">
-        <span>Alergias (tags)</span>
+        <span>Alergias</span>
         <b>{{ (data.step4.alergias_tags or []) | join(', ') }}</b>
       </div>
       <div class="kv wide">
-        <span>Alergias (texto)</span>
+        <span>Detalhes de alergias</span>
         <div class="note-box">{{ data.step4.alergias_texto or '-' }}</div>
       </div>
 
@@ -53,7 +59,7 @@
       </div>
 
       <div class="kv wide">
-        <span>Restrições (tags)</span>
+        <span>Restrições</span>
         <b>{{ (data.step4.restricoes_tags or []) | join(', ') }}</b>
       </div>
     </div>
@@ -67,8 +73,8 @@
 
     <form method="post" action="/review/confirm" style="width:100%;">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
-      <button class="btn primary" type="submit">Confirmar</button>
-      <div class="mini">Ao confirmar, salvamos no MongoDB local (demo).</div>
+      <button class="btn primary" type="submit">Confirmar e continuar</button>
+      <div class="mini">Próximo passo: montar seu plano completo da semana.</div>
     </form>
   </div>
 {% endblock %}

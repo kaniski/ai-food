@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="hero">
+    <div class="eyebrow">Metas do seu plano</div>
+    <h1>Pronto. Aqui está sua meta diária.</h1>
+    <p class="sub">
+      Com isso, seu cardápio fica alinhado com o seu objetivo e com a sua rotina.
+    </p>
+
+    <div class="trust-row" style="margin-top:12px;">
+      <div class="badge"><span class="icon">✓</span><span>Personalizado</span></div>
+      <div class="badge"><span class="icon">⚡</span><span>Prático</span></div>
+      <div class="badge"><span class="icon">🧩</span><span>Dividido por refeição</span></div>
+    </div>
+  </div>
+
+  <div class="summary" style="margin-top:16px;">
+    <h2>Meta diária</h2>
+    <div class="summary-grid">
+      <div class="kv"><span>Calorias/dia</span><b>{{ macros.cal_target }} kcal</b></div>
+      <div class="kv"><span>Refeições/dia</span><b>{{ refeicoes }}x</b></div>
+      <div class="kv"><span>Kcal/refeição</span><b>{{ macros.kcal_per_meal }} kcal</b></div>
+      <div class="kv"><span>Base estimada</span><b>{{ macros.tdee }} kcal</b></div>
+    </div>
+
+    <h2>Macros (g por dia)</h2>
+    <div class="summary-grid">
+      <div class="kv">
+        <span>Proteína</span>
+        <b>{{ macros.protein_g }}g ({{ macros.protein_pct }}%)</b>
+      </div>
+      <div class="kv">
+        <span>Carboidrato</span>
+        <b>{{ macros.carbs_g }}g ({{ macros.carbs_pct }}%)</b>
+      </div>
+      <div class="kv">
+        <span>Gordura</span>
+        <b>{{ macros.fat_g }}g ({{ macros.fat_pct }}%)</b>
+      </div>
+      <div class="kv">
+        <span>Por refeição</span>
+        <b>{{ macros.protein_per_meal_g }}P / {{ macros.carbs_per_meal_g }}C / {{ macros.fat_per_meal_g }}G</b>
+      </div>
+    </div>
+
+    <div class="mini" style="margin-top:10px;">
+      Agora vamos ajustar suas restrições e preferências para deixar tudo ainda mais fácil de seguir.
+    </div>
+  </div>
+
+  <div class="actions">
+    <a class="btn ghost" href="/step/3">Voltar</a>
+
+    <form method="post" action="/macros/confirm" style="width:100%;">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn primary" type="submit">Continuar</button>
+      <div class="mini">Próximo: alergias, restrições e o que você não come.</div>
+    </form>
+  </div>
+{% endblock %}
